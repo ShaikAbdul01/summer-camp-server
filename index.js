@@ -22,31 +22,13 @@ const client = new MongoClient(uri, {
 
 async function run() {
   try {
-    const usersCollection = client.db("artistryDb").collection("users");
     const classesCollection = client.db("artistryDb").collection("classes");
     const instructorsCollection = client
       .db("artistryDb")
       .collection("instructors");
-
-    app.put("/users/:email", async (req, res) => {
-      const email = req.params.email;
-      const user = req.body;
-      const query = { email: email };
-      const options = { upsert: true };
-      const updateDoc = {
-        $set: user,
-      };
-      const result = await usersCollection.updateOne(query, updateDoc, options);
-      res.send(result);
-    });
-
-    // Get user
-    app.get("/users/:email", async (req, res) => {
-      const email = req.params.email;
-      const query = { email: email };
-      const result = await usersCollection.findOne(query);
-      res.send(result);
-    });
+    const classesItemCollection = client
+      .db("artistryDb")
+      .collection("classesItem");
 
     app.get("/classes", async (req, res) => {
       const result = await classesCollection.find().toArray();
@@ -54,6 +36,12 @@ async function run() {
     });
     app.get("/instructors", async (req, res) => {
       const result = await instructorsCollection.find().toArray();
+      res.send(result);
+    });
+
+    app.post("/classItem", async (req, res) => {
+      const item = req.body;
+      const result = await classesItemCollection.insertOne(item);
       res.send(result);
     });
 
