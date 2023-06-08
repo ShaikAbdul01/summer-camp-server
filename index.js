@@ -31,15 +31,25 @@ async function run() {
       .db("artistryDb")
       .collection("classesItem");
 
-      // users
-    app.post("/users", async (req, res) => {
-      const user = req.body;
+    // users
+    app.get("/users", async (req, res) => {
       // console.log(user);
-      const result = await usersCollection.insertOne(user);
+      const result = await usersCollection.find().toArray();
       res.send(result);
     });
 
-    // classes 
+    app.post("/users", async (req, res) => {
+      const user = req.body;
+      const query = { email: user.email };
+      const existingUser = await usersCollection.findOne(query);
+      if (existingUser) {
+        return res.send({ message: "user already exists" });
+      }
+      const result = await userCollection.insertOne(user);
+      res.send(result);
+    });
+
+    // classes
     app.get("/classes", async (req, res) => {
       const result = await classesCollection.find().toArray();
       res.send(result);
@@ -49,7 +59,7 @@ async function run() {
       res.send(result);
     });
 
-    // classItem 
+    // classItem
     app.get("/classItem", async (req, res) => {
       const email = req.query.email;
       if (!email) {
