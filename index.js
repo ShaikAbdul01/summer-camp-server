@@ -22,6 +22,7 @@ const client = new MongoClient(uri, {
 
 async function run() {
   try {
+    const usersCollection = client.db("artistryDb").collection("users");
     const classesCollection = client.db("artistryDb").collection("classes");
     const instructorsCollection = client
       .db("artistryDb")
@@ -30,6 +31,15 @@ async function run() {
       .db("artistryDb")
       .collection("classesItem");
 
+      // users
+    app.post("/users", async (req, res) => {
+      const user = req.body;
+      // console.log(user);
+      const result = await usersCollection.insertOne(user);
+      res.send(result);
+    });
+
+    // classes 
     app.get("/classes", async (req, res) => {
       const result = await classesCollection.find().toArray();
       res.send(result);
@@ -39,56 +49,34 @@ async function run() {
       res.send(result);
     });
 
-    /* app.get("/classItem", async (req, res) => {
+    // classItem 
+    app.get("/classItem", async (req, res) => {
       const email = req.query.email;
       if (!email) {
         res.send([]);
       }
-
-        const decodedEmail = req.decoded.email;
+      /* const decodedEmail = req.decoded.email;
         if (email !== decodedEmail) {
           return res
             .status(403)
             .send({ error: true, message: "forbidden access" });
-        } 
+        }  */
       const query = { email: email };
-      const result = await classesCollection.find(query).toArray();
+      const result = await classesItemCollection.find(query).toArray();
       res.send(result);
-    });
- */
-
-    app.get("/classItem", async (req, res) => {
-      const email = req.query.email;
-
-      if (!email) {
-        res.send([]);
-        return;
-      }
-
-      const query = { email: email };
-
-      try {
-        const classesCollection = client.db("artistryDb").collection("classes");
-        const result = await classesCollection.find(query).toArray();
-        res.send(result);
-      } catch (error) {
-        console.error("Failed to fetch class items:", error);
-        res
-          .status(500)
-          .json({ error: true, message: "Failed to fetch class items" });
-      }
     });
 
     app.post("/classItem", async (req, res) => {
       const item = req.body;
       // console.log(item);
-      const result = await classesCollection.insertOne(item);
+      const result = await classesItemCollection.insertOne(item);
       res.send(result);
     });
+
     app.delete("/classItem/:id", async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
-      const result = await classesCollection.deleteOne(query);
+      const result = await classesItemCollection.deleteOne(query);
       res.send(result);
     });
 
