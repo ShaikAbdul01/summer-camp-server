@@ -34,9 +34,13 @@ async function run() {
 
     // users
     app.get("/users", async (req, res) => {
-      // console.log(user);
-      const result = await usersCollection.find().toArray();
-      res.send(result);
+      try {
+        const result = await usersCollection.find().toArray();
+        res.json(result);
+      } catch (error) {
+        console.error("Error fetching users:", error);
+        res.status(500).json({ error: "Failed to fetch users" });
+      }
     });
 
     app.post("/users", async (req, res) => {
@@ -58,6 +62,8 @@ async function run() {
           role: "admin",
         },
       };
+      console.log(id, filter, updateDoc);
+
       const result = await usersCollection.updateOne(filter, updateDoc);
       res.send(result);
     });
@@ -141,7 +147,7 @@ async function run() {
         res.status(500).send("An error occurred while retrieving toy data.");
       }
     });
-   /*  app.post("/addClass", async (req, res) => {
+    /*  app.post("/addClass", async (req, res) => {
       const classes = req.body;
       const result = await classesCollection.insertOne(classes);
       res.send(result);
@@ -151,7 +157,7 @@ async function run() {
       const newClass = req.body;
       newClass.totalEnrolledStudents = 0;
       newClass.status = "pending";
-    
+
       try {
         const result = await classesCollection.insertOne(newClass);
         res.json({ insertedId: result.insertedId });
@@ -160,9 +166,53 @@ async function run() {
         res.status(500).json({ error: "Failed to add class" });
       }
     });
-    
 
-   
+    // Update class status
+    app.patch("/classes/:classId/status", async (req, res) => {
+      const { classId } = req.params;
+      const { status } = req.body;
+
+      const query = { _id: new ObjectId(classId) };
+      const updateDoc = {
+        $set: {
+          status,
+        },
+      };
+
+      try {
+        const result = await classesCollection.updateOne(query, updateDoc);
+        res.json({ message: "Class status updated successfully" });
+      } catch (error) {
+        console.error("Failed to update class status:", error);
+        res.status(500).json({ error: "Failed to update class status" });
+      }
+    });
+
+    // Submit feedback for a class
+    app.post("/classes/:classId/feedback", async (req, res) => {
+      const { classId } = req.params;
+      const { feedback } = req.body;
+
+      const query = { _id: new ObjectId(classId) };
+
+      try {
+        // Fetch the class and instructor details for sending feedback
+        const classItem = await classesCollection.findOne(query);
+        const instructor = await instructorsCollection.findOne({
+          _id: classItem.instructorId,
+        });
+
+        // Here, you can handle the logic to send the feedback to the instructor
+        console.log(`Feedback for Class ${classId}: ${feedback}`);
+        console.log("Instructor Email:", instructor.email);
+
+        res.json({ message: "Feedback submitted successfully" });
+      } catch (error) {
+        console.error("Failed to submit feedback:", error);
+        res.status(500).json({ error: "Failed to submit feedback" });
+      }
+    });
+
     // Connect the client to the server	(optional starting in v4.7)
     await client.connect();
     // Send a ping to confirm a successful connection
