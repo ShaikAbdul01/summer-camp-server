@@ -1,7 +1,7 @@
 const express = require("express");
 const app = express();
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
-const stripe = require("stripe")(process.env.PAYMENT_SECRET_KEY);
+// const stripe = require("stripe")(process.env.PAYMENT_SECRET_KEY);
 const cors = require("cors");
 const port = process.env.PORT || 5000;
 
@@ -74,14 +74,13 @@ async function run() {
       res.send(result);
     });
 
-
-     app.delete("/users/admin/:id", async (req, res) => {
+    app.delete("/users/admin/:id", async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const result = await usersCollection.deleteOne(query);
       res.send(result);
     });
-     app.delete("/users/instructor/:id", async (req, res) => {
+    app.delete("/users/instructor/:id", async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const result = await usersCollection.deleteOne(query);
@@ -129,6 +128,41 @@ async function run() {
       res.send(result);
     });
 
+    // instructor add a class
+
+    app.get("/addClass/email/:email", async (req, res) => {
+      const email = req.params.email;
+      const query = { email: email };
+      try {
+        const result = await classesCollection.find(query).toArray();
+        res.send(result);
+      } catch (error) {
+        console.error("Error retrieving toy data:", error);
+        res.status(500).send("An error occurred while retrieving toy data.");
+      }
+    });
+   /*  app.post("/addClass", async (req, res) => {
+      const classes = req.body;
+      const result = await classesCollection.insertOne(classes);
+      res.send(result);
+    }); */
+
+    app.post("/addClass", async (req, res) => {
+      const newClass = req.body;
+      newClass.totalEnrolledStudents = 0;
+      newClass.status = "pending";
+    
+      try {
+        const result = await classesCollection.insertOne(newClass);
+        res.json({ insertedId: result.insertedId });
+      } catch (error) {
+        console.error("Failed to add class:", error);
+        res.status(500).json({ error: "Failed to add class" });
+      }
+    });
+    
+
+   
     // Connect the client to the server	(optional starting in v4.7)
     await client.connect();
     // Send a ping to confirm a successful connection
