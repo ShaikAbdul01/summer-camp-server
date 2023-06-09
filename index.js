@@ -189,29 +189,24 @@ async function run() {
     });
 
     // Submit feedback for a class
-    app.post("/classes/:classId/feedback", async (req, res) => {
-      const { classId } = req.params;
-      const { feedback } = req.body;
+    app.post('/classes/:classId/feedback', async (req, res) => {
+  const { classId } = req.params;
+  const { feedback } = req.body;
 
-      const query = { _id: new ObjectId(classId) };
+  try {
+    const query = { _id: ObjectId(classId) };
+    const classItem = await classesCollection.findOne(query);
+    const instructor = await instructorsCollection.findOne({ _id: classItem.instructorId });
 
-      try {
-        // Fetch the class and instructor details for sending feedback
-        const classItem = await classesCollection.findOne(query);
-        const instructor = await instructorsCollection.findOne({
-          _id: classItem.instructorId,
-        });
+    console.log(`Feedback for Class ${classId}: ${feedback}`);
+    console.log('Instructor Email:', instructor.email);
 
-        // Here, you can handle the logic to send the feedback to the instructor
-        console.log(`Feedback for Class ${classId}: ${feedback}`);
-        console.log("Instructor Email:", instructor.email);
-
-        res.json({ message: "Feedback submitted successfully" });
-      } catch (error) {
-        console.error("Failed to submit feedback:", error);
-        res.status(500).json({ error: "Failed to submit feedback" });
-      }
-    });
+    res.json({ message: 'Feedback submitted successfully' });
+  } catch (error) {
+    console.error('Failed to submit feedback:', error);
+    res.status(500).json({ error: 'Failed to submit feedback' });
+  }
+});
 
     // Connect the client to the server	(optional starting in v4.7)
     await client.connect();
