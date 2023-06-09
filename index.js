@@ -1,6 +1,7 @@
 const express = require("express");
 const app = express();
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
+const stripe = require("stripe")(process.env.PAYMENT_SECRET_KEY);
 const cors = require("cors");
 const port = process.env.PORT || 5000;
 
@@ -74,6 +75,12 @@ async function run() {
     });
 
 
+     app.delete("/users/admin/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await usersCollection.deleteOne(query);
+      res.send(result);
+    });
      app.delete("/users/instructor/:id", async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
