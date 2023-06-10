@@ -3,6 +3,7 @@ const app = express();
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 // const stripe = require("stripe")(process.env.PAYMENT_SECRET_KEY);
 const cors = require("cors");
+const jwt = require('jsonwebtoken');
 const port = process.env.PORT || 5000;
 
 require("dotenv").config();
@@ -31,6 +32,74 @@ async function run() {
     const classesItemCollection = client
       .db("artistryDb")
       .collection("classesItem");
+
+
+      const verifyJWT = (req, res, next) => {
+        const authorization = req.headers.authorization;
+        if (!authorization) {
+          return res
+            .status(401)
+            .send({ error: true, message: "Unauthorized access" });
+        }
+  
+        const token = authorization.split(" ")[1];
+        try {
+          const decoded = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET);
+          req.decoded = decoded;
+          next();
+        } catch (err) {
+          return res
+            .status(401)
+            .send({ error: true, message: "Unauthorized access" });
+        }
+      };
+  
+      app.post("/jwt", (req, res) => {
+        const user = req.body;
+        const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, {
+          expiresIn: "1d",
+        });
+        res.send({ token });
+      });
+  
+
+  
+      const verifyAdmin = async (req, res, next) => {
+        try {
+          const email = req.decoded.email;
+          const query = { email: email };
+          const user = await usersCollection.findOne(query);
+          if (user && user.role === "admin") {
+            next();
+          } else {
+            return res
+              .status(403)
+              .send({ error: true, message: "Forbidden Message" });
+          }
+        } catch (error) {
+          return res
+            .status(500)
+            .send({ error: true, message: "Internal Server Error" });
+        }
+      };
+      const verifyInstructor = async (req, res, next) => {
+        try {
+          const email = req.decoded.email;
+          const query = { email: email };
+          const user = await usersCollection.findOne(query);
+          if (user && user.role === "instructor") {
+            next();
+          } else {
+            return res
+              .status(403)
+              .send({ error: true, message: "Forbidden Message" });
+          }
+        } catch (error) {
+          return res
+            .status(500)
+            .send({ error: true, message: "Internal Server Error" });
+        }
+      };
 
     // users
     app.get("/users", async (req, res) => {
@@ -62,7 +131,6 @@ async function run() {
           role: "admin",
         },
       };
-      console.log(id, filter, updateDoc);
 
       const result = await usersCollection.updateOne(filter, updateDoc);
       res.send(result);
@@ -189,24 +257,26 @@ async function run() {
     });
 
     // Submit feedback for a class
-    app.post('/classes/:classId/feedback', async (req, res) => {
-  const { classId } = req.params;
-  const { feedback } = req.body;
+    app.post("/classes/:classId/feedback", async (req, res) => {
+      const { classId } = req.params;
+      const { feedback } = req.body;
 
-  try {
-    const query = { _id: ObjectId(classId) };
-    const classItem = await classesCollection.findOne(query);
-    const instructor = await instructorsCollection.findOne({ _id: classItem.instructorId });
+      try {
+        const query = { _id: ObjectId(classId) };
+        const classItem = await classesCollection.findOne(query);
+        const instructor = await instructorsCollection.findOne({
+          _id: classItem.instructorId,
+        });
 
-    console.log(`Feedback for Class ${classId}: ${feedback}`);
-    console.log('Instructor Email:', instructor.email);
+        console.log(`Feedback for Class ${classId}: ${feedback}`);
+        console.log("Instructor Email:", instructor.email);
 
-    res.json({ message: 'Feedback submitted successfully' });
-  } catch (error) {
-    console.error('Failed to submit feedback:', error);
-    res.status(500).json({ error: 'Failed to submit feedback' });
-  }
-});
+        res.json({ message: "Feedback submitted successfully" });
+      } catch (error) {
+        console.error("Failed to submit feedback:", error);
+        res.status(500).json({ error: "Failed to submit feedback" });
+      }
+    });
 
     // Connect the client to the server	(optional starting in v4.7)
     await client.connect();
