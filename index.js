@@ -3,7 +3,7 @@ const app = express();
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 // const stripe = require("stripe")(process.env.PAYMENT_SECRET_KEY);
 const cors = require("cors");
-const jwt = require('jsonwebtoken');
+const jwt = require("jsonwebtoken");
 const port = process.env.PORT || 5000;
 
 require("dotenv").config();
@@ -33,73 +33,70 @@ async function run() {
       .db("artistryDb")
       .collection("classesItem");
 
+    const verifyJWT = (req, res, next) => {
+      const authorization = req.headers.authorization;
+      if (!authorization) {
+        return res
+          .status(401)
+          .send({ error: true, message: "Unauthorized access" });
+      }
 
-      const verifyJWT = (req, res, next) => {
-        const authorization = req.headers.authorization;
-        if (!authorization) {
-          return res
-            .status(401)
-            .send({ error: true, message: "Unauthorized access" });
-        }
-  
-        const token = authorization.split(" ")[1];
-        try {
-          const decoded = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET);
-          req.decoded = decoded;
-          next();
-        } catch (err) {
-          return res
-            .status(401)
-            .send({ error: true, message: "Unauthorized access" });
-        }
-      };
-  
-      app.post("/jwt", (req, res) => {
-        const user = req.body;
-        const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, {
-          expiresIn: "1d",
-        });
-        res.send({ token });
+      const token = authorization.split(" ")[1];
+      try {
+        const decoded = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET);
+        req.decoded = decoded;
+        next();
+      } catch (err) {
+        return res
+          .status(401)
+          .send({ error: true, message: "Unauthorized access" });
+      }
+    };
+
+    app.post("/jwt", (req, res) => {
+      const user = req.body;
+      const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, {
+        expiresIn: "1d",
       });
-  
+      res.send({ token });
+    });
 
-  
-      const verifyAdmin = async (req, res, next) => {
-        try {
-          const email = req.decoded.email;
-          const query = { email: email };
-          const user = await usersCollection.findOne(query);
-          if (user && user.role === "admin") {
-            next();
-          } else {
-            return res
-              .status(403)
-              .send({ error: true, message: "Forbidden Message" });
-          }
-        } catch (error) {
+    const verifyAdmin = async (req, res, next) => {
+      try {
+        const email = req.decoded.email;
+        const query = { email: email };
+        const user = await usersCollection.findOne(query);
+        if (user && user.role === "admin") {
+          next();
+        } else {
           return res
-            .status(500)
-            .send({ error: true, message: "Internal Server Error" });
+            .status(403)
+            .send({ error: true, message: "Forbidden Message" });
         }
-      };
-      const verifyInstructor = async (req, res, next) => {
-        try {
-          const email = req.decoded.email;
-          const query = { email: email };
-          const user = await usersCollection.findOne(query);
-          if (user && user.role === "instructor") {
-            next();
-          } else {
-            return res
-              .status(403)
-              .send({ error: true, message: "Forbidden Message" });
-          }
-        } catch (error) {
+      } catch (error) {
+        return res
+          .status(500)
+          .send({ error: true, message: "Internal Server Error" });
+      }
+    };
+    const verifyInstructor = async (req, res, next) => {
+      try {
+        const email = req.decoded.email;
+        const query = { email: email };
+        const user = await usersCollection.findOne(query);
+        if (user && user.role === "instructor") {
+          next();
+        } else {
           return res
-            .status(500)
-            .send({ error: true, message: "Internal Server Error" });
+            .status(403)
+            .send({ error: true, message: "Forbidden Message" });
         }
-      };
+      } catch (error) {
+        return res
+          .status(500)
+          .send({ error: true, message: "Internal Server Error" });
+      }
+    };
 
     // users
     app.get("/users", async (req, res) => {
@@ -123,7 +120,39 @@ async function run() {
       res.send(result);
     });
 
-    app.patch("/users/admin/:id", async (req, res) => {
+    app.get("/users/admin/:email", verifyJWT,verifyAdmin, async (req, res) => {
+      const email = req.params.email;
+      if (req.decoded.email !== email) {
+        res.send({ admin: false });
+      }
+      const query = { email: email };
+      const user = await usersCollection.findOne(query);
+      const result = { admin: user?.role === "admin" };
+      res.send(result);
+    });
+
+    app.get("/users/instructor/:email", verifyJWT,verifyInstructor, async (req, res) => {
+      const email = req.params.email;
+      if (req.decoded.email !== email) {
+        res.send({ instructor: false });
+      }
+      const query = { email: email };
+      const user = await usersCollection.findOne(query);
+      const result = { instructor: user?.role === "instructor" };
+      res.send(result);
+    });
+    app.get("/users/student/:email", verifyJWT, async (req, res) => {
+      const email = req.params.email;
+      if (req.decoded.email !== email) {
+        res.send({ student: false });
+      }
+      const query = { email: email };
+      const user = await usersCollection.findOne(query);
+      const result = { user: user?.role === "student" };
+      res.send(result);
+    });
+
+    app.patch("/users/admin/:id",verifyJWT,verifyAdmin, async (req, res) => {
       const id = req.params.id;
       const filter = { _id: new ObjectId(id) };
       const updateDoc = {
@@ -136,7 +165,7 @@ async function run() {
       res.send(result);
     });
 
-    app.patch("/users/instructor/:id", async (req, res) => {
+    app.patch("/users/instructor/:id",verifyJWT,verifyInstructor, async (req, res) => {
       const id = req.params.id;
       const filter = { _id: new ObjectId(id) };
       const updateDoc = {
@@ -147,8 +176,19 @@ async function run() {
       const result = await usersCollection.updateOne(filter, updateDoc);
       res.send(result);
     });
+    app.patch("/users/student/:id", async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const updateDoc = {
+        $set: {
+          role: "student",
+        },
+      };
+      const result = await usersCollection.updateOne(filter, updateDoc);
+      res.send(result);
+    });
 
-    app.delete("/users/admin/:id", async (req, res) => {
+    app.delete("/users/admin/:id", verifyJWT,async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const result = await usersCollection.deleteOne(query);
@@ -172,17 +212,17 @@ async function run() {
     });
 
     // classItem
-    app.get("/classItem", async (req, res) => {
+    app.get("/classItem", verifyJWT, async (req, res) => {
       const email = req.query.email;
       if (!email) {
         res.send([]);
       }
-      /* const decodedEmail = req.decoded.email;
-        if (email !== decodedEmail) {
-          return res
-            .status(403)
-            .send({ error: true, message: "forbidden access" });
-        }  */
+      const decodedEmail = req.decoded.email;
+      if (email !== decodedEmail) {
+        return res
+          .status(403)
+          .send({ error: true, message: "forbidden access" });
+      }
       const query = { email: email };
       const result = await classesItemCollection.find(query).toArray();
       res.send(result);
@@ -215,11 +255,11 @@ async function run() {
         res.status(500).send("An error occurred while retrieving toy data.");
       }
     });
-    /*  app.post("/addClass", async (req, res) => {
+    app.post("/addClass", async (req, res) => {
       const classes = req.body;
       const result = await classesCollection.insertOne(classes);
       res.send(result);
-    }); */
+    }); 
 
     app.post("/addClass", async (req, res) => {
       const newClass = req.body;
